@@ -93,14 +93,9 @@ export async function GET() {
   } catch (error) {
     console.error("Error fetching SNCF data:", error)
 
-    // Return fallback data
-    const fallbackDepartures = [
-      { time: "14:15", destination: "Versailles Rive Gauche", mission: "VICK", delay: 0, status: "on-time" as const },
-      { time: "14:33", destination: "Versailles Rive Gauche", mission: "VERO", delay: 4, status: "delayed" as const },
-      { time: "14:51", destination: "Versailles Rive Gauche", mission: "VALI", delay: 0, status: "on-time" as const },
-      { time: "15:05", destination: "Versailles Rive Gauche", mission: "VICK", delay: 0, status: "on-time" as const },
-    ]
-
-    return NextResponse.json({ departures: fallbackDepartures })
+    return NextResponse.json(
+      { error: "API SNCF indisponible" },
+      { status: 502 }
+    )
   }
 }
