@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server"
 
 const SNCF_API_BASE = "https://api.sncf.com/v1"
-const FROM_STOP_AREA = "stop_area:OCE:SA:87758011" // Issy - Val de Seine
-const TO_STOP_AREA = "stop_area:OCE:SA:87393009" // Versailles Rive Gauche
+// Coordinates are used instead of stop_area ids to avoid unknown_object errors
+// Format: "lon;lat"
+const FROM_COORD = "2.2727;48.8239" // Issy - Val de Seine
+const TO_COORD = "2.1301;48.8014" // Versailles Rive Gauche
 
 interface SNCFJourneysResponse {
   journeys: Array<{
@@ -58,9 +60,12 @@ export async function GET() {
         ? apiKey
         : "Basic " + Buffer.from(`${apiKey}:`).toString("base64")
 
-    const from = encodeURIComponent(FROM_STOP_AREA)
-    const to = encodeURIComponent(TO_STOP_AREA)
-    const url = `${SNCF_API_BASE}/coverage/sncf/journeys?from=${from}&to=${to}&count=6`
+    const params = new URLSearchParams({
+      from: FROM_COORD,
+      to: TO_COORD,
+      count: "6",
+    })
+    const url = `${SNCF_API_BASE}/coverage/sncf/journeys?${params.toString()}`
 
     const response = await fetch(url, {
       headers: {
@@ -76,6 +81,12 @@ export async function GET() {
       if (response.status === 401 || response.status === 403) {
         return NextResponse.json(
           { error: "Accès refusé à l'API SNCF" },
+          { status: 502 }
+        )
+      }
+      if (response.status === 404) {
+        return NextResponse.json(
+          { error: "Arrêt inconnu pour l'API SNCF" },
           { status: 502 }
         )
       }
