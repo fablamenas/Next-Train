@@ -18,9 +18,11 @@ export default function RERSchedule() {
   const [departures, setDepartures] = useState<TrainDeparture[]>([])
   const [loading, setLoading] = useState(false)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchDepartures = async () => {
     setLoading(true)
+    setError(null)
     try {
       const response = await fetch("/api/trains")
       if (response.ok) {
@@ -28,25 +30,14 @@ export default function RERSchedule() {
         setDepartures(data.departures)
         setLastUpdate(new Date())
       } else {
-        // Fallback data if API fails
-        setDepartures([
-          { time: "14:15", destination: "Versailles Rive Gauche", mission: "VICK", delay: 0, status: "on-time" },
-          { time: "14:33", destination: "Versailles Rive Gauche", mission: "VERO", delay: 4, status: "delayed" },
-          { time: "14:51", destination: "Versailles Rive Gauche", mission: "VALI", delay: 0, status: "on-time" },
-          { time: "15:05", destination: "Versailles Rive Gauche", mission: "VICK", delay: 0, status: "on-time" },
-        ])
-        setLastUpdate(new Date())
+        const data = await response.json().catch(() => null)
+        setError(data?.error || "Erreur lors de la récupération des horaires")
+        setDepartures([])
       }
     } catch (error) {
       console.error("Error fetching departures:", error)
-      // Use fallback data
-      setDepartures([
-        { time: "14:15", destination: "Versailles Rive Gauche", mission: "VICK", delay: 0, status: "on-time" },
-        { time: "14:33", destination: "Versailles Rive Gauche", mission: "VERO", delay: 4, status: "delayed" },
-        { time: "14:51", destination: "Versailles Rive Gauche", mission: "VALI", delay: 0, status: "on-time" },
-        { time: "15:05", destination: "Versailles Rive Gauche", mission: "VICK", delay: 0, status: "on-time" },
-      ])
-      setLastUpdate(new Date())
+      setError("Erreur lors de la récupération des horaires")
+      setDepartures([])
     }
     setLoading(false)
   }
@@ -102,6 +93,10 @@ export default function RERSchedule() {
           <p className="text-center text-sm text-gray-500">
             Dernière mise à jour : {lastUpdate.toLocaleTimeString("fr-FR")}
           </p>
+        )}
+
+        {error && (
+          <p className="text-center text-sm text-red-600">{error}</p>
         )}
 
         {/* Departures List */}
