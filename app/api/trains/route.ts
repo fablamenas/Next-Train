@@ -61,12 +61,13 @@ export async function GET() {
 
     const response = await fetch(url, {
       headers: {
-        Authorization: `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
+        Authorization: apiKey,
         Accept: "application/json",
       },
     })
 
     if (!response.ok) {
+      console.error(`SNCF API error: ${response.status} - ${response.statusText}`)
       throw new Error(`SNCF API error: ${response.status}`)
     }
 
