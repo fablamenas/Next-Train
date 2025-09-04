@@ -57,11 +57,13 @@ export async function GET() {
       return NextResponse.json({ error: "API key not configured" }, { status: 500 })
     }
 
+    const authHeader = "Basic " + Buffer.from(`${apiKey}:`).toString("base64")
+
     const url = `${SNCF_API_BASE}/coverage/${COVERAGE}/stop_areas/${STOP_AREA_ID}/departures?count=10&data_freshness=realtime`
 
     const response = await fetch(url, {
       headers: {
-        Authorization: apiKey,
+        Authorization: authHeader,
         Accept: "application/json",
       },
     })
