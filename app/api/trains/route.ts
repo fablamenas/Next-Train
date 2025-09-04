@@ -67,7 +67,8 @@ export async function GET() {
     })
 
     if (!response.ok) {
-      console.error(`SNCF API error: ${response.status} - ${response.statusText}`)
+      const errBody = await response.text()
+      console.error("SNCF API error:", response.status, errBody)
       throw new Error(`SNCF API error: ${response.status}`)
     }
 
