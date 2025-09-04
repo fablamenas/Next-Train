@@ -110,12 +110,9 @@ export default function RERSchedule() {
             <Card key={index} className="bg-white shadow-sm border border-gray-200">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="text-2xl font-bold text-gray-900 font-mono">{departure.time}</div>
-                    <div>
-                      <div className="text-sm text-gray-600">→ {departure.destination}</div>
-                      <div className="text-xs text-gray-500 font-mono">[{departure.mission}]</div>
-                    </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-xl font-bold text-gray-900 font-mono">{departure.time}</div>
+                    <div className="text-base text-gray-700 font-mono font-medium">[{departure.mission}]</div>
                   </div>
                   <div>{getStatusBadge(departure)}</div>
                 </div>
