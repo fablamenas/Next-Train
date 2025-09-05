@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 
 const SNCF_API_BASE = "https://api.sncf.com/v1"
-const FROM_STOP_AREA = "stop_area:OCE:SA:87758011" // Issy - Val de Seine
-const TO_STOP_AREA = "stop_area:OCE:SA:87393009" // Versailles Rive Gauche
+const FROM_STOP_AREA = "stop_area:SNCF:87271007" // Issy - Val de Seine
+const TO_STOP_AREA = "stop_area:SNCF:87393157" // Versailles Rive Gauche
 
 interface SNCFJourneysResponse {
   journeys: Array<{
@@ -45,6 +45,7 @@ function parseDateTime(dateTimeStr: string): { time: string; delay: number } {
 }
 
 export async function GET() {
+  let url = ""
   try {
     const apiKey = process.env.SNCF_API_KEY || process.env.API_SNCF_KEY
 
@@ -55,7 +56,9 @@ export async function GET() {
 
     const authHeader = "Basic " + Buffer.from(`${apiKey}:`).toString("base64")
 
-    const url = `${SNCF_API_BASE}/coverage/sncf/journeys?from=${FROM_STOP_AREA}&to=${TO_STOP_AREA}&count=6`
+    url = `${SNCF_API_BASE}/coverage/sncf/journeys?from=${FROM_STOP_AREA}&to=${TO_STOP_AREA}&count=6&datetime_represents=departure`
+
+    console.log("SNCF API request URL:", url)
 
     const response = await fetch(url, {
       headers: {
@@ -66,8 +69,8 @@ export async function GET() {
 
     if (!response.ok) {
       const errBody = await response.text()
-      console.error("SNCF API error:", response.status, errBody)
-      throw new Error(`SNCF API error: ${response.status}`)
+      console.error("SNCF API error:", response.status, errBody, "URL:", url)
+      throw new Error(`SNCF API error: ${response.status} ${errBody}`)
     }
 
     const data: SNCFJourneysResponse = await response.json()
@@ -76,6 +79,14 @@ export async function GET() {
       .map((journey, index) => {
         const ptSection = journey.sections.find((s) => s.type === "public_transport")
         if (!ptSection || !ptSection.display_informations) return null
+
+        console.log("Journey", index, {
+          departure: ptSection.departure_date_time,
+          arrival: ptSection.arrival_date_time,
+          direction: ptSection.display_informations.direction,
+          code: ptSection.display_informations.code,
+        })
+
         const { time, delay } = parseDateTime(ptSection.departure_date_time)
 
         return {
@@ -88,12 +99,16 @@ export async function GET() {
       })
       .filter(Boolean)
 
+    console.log("SNCF departures:", departures)
+
     return NextResponse.json({ departures })
   } catch (error) {
     console.error("Error fetching SNCF data:", error)
+    const errorMessage =
+      error instanceof Error ? error.message : "Erreur inconnue"
 
     return NextResponse.json(
-      { error: "API SNCF indisponible" },
+      { error: `Erreur API SNCF lors de l'appel à ${url} : ${errorMessage}` },
       { status: 502 }
     )
   }
