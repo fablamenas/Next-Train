@@ -3,7 +3,9 @@ import { NextResponse } from "next/server"
 const SNCF_API_BASE = "https://api.sncf.com/v1"
 const FROM_STOP_AREA = "stop_area:SNCF:87271007" // Issy - Val de Seine
 const TO_STOP_AREA = "stop_area:SNCF:87393157" // Versailles Rive Gauche
+
 const DEBUG = process.env.SNCF_API_DEBUG === "true"
+
 
 interface SNCFJourneysResponse {
   journeys: Array<{
@@ -63,6 +65,7 @@ export async function GET() {
       console.log("SNCF API request URL:", url)
     }
 
+
     const response = await fetch(url, {
       headers: {
         Authorization: authHeader,
@@ -72,7 +75,9 @@ export async function GET() {
 
     if (!response.ok) {
       const errBody = await response.text()
+
       console.error("SNCF API error:", response.status, errBody, "URL:", url)
+
       throw new Error(`SNCF API error: ${response.status} ${errBody}`)
     }
 
