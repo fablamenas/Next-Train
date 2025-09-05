@@ -7,4 +7,5 @@ This version queries the official SNCF API using the `journeys` endpoint:
 
 ## Environment variables
 
-- `SNCF_API_KEY` or `API_SNCF_KEY`: SNCF API key.
+- `SNCF_API_KEY` `: SNCF API key.
+

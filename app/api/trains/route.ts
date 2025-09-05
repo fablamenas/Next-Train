@@ -69,7 +69,9 @@ export async function GET() {
 
     if (!response.ok) {
       const errBody = await response.text()
+
       console.error("SNCF API error:", response.status, errBody, "URL:", url)
+
       throw new Error(`SNCF API error: ${response.status} ${errBody}`)
     }
 
@@ -80,12 +82,14 @@ export async function GET() {
         const ptSection = journey.sections.find((s) => s.type === "public_transport")
         if (!ptSection || !ptSection.display_informations) return null
 
+
         console.log("Journey", index, {
           departure: ptSection.departure_date_time,
           arrival: ptSection.arrival_date_time,
           direction: ptSection.display_informations.direction,
           code: ptSection.display_informations.code,
         })
+
 
         const { time, delay } = parseDateTime(ptSection.departure_date_time)
 
@@ -100,6 +104,7 @@ export async function GET() {
       .filter(Boolean)
 
     console.log("SNCF departures:", departures)
+
 
     return NextResponse.json({ departures })
   } catch (error) {
