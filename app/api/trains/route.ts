@@ -65,6 +65,7 @@ export async function GET() {
         Authorization: authHeader,
         Accept: "application/json",
       },
+      cache: "no-store",
     })
 
     if (!response.ok) {
