@@ -4,9 +4,6 @@ const SNCF_API_BASE = "https://api.sncf.com/v1"
 const FROM_STOP_AREA = "stop_area:SNCF:87271007" // Issy - Val de Seine
 const TO_STOP_AREA = "stop_area:SNCF:87393157" // Versailles Rive Gauche
 
-const DEBUG = process.env.SNCF_API_DEBUG === "true"
-
-
 interface SNCFJourneysResponse {
   journeys: Array<{
     sections: Array<{
@@ -61,10 +58,7 @@ export async function GET() {
 
     url = `${SNCF_API_BASE}/coverage/sncf/journeys?from=${FROM_STOP_AREA}&to=${TO_STOP_AREA}&count=6&datetime_represents=departure`
 
-    if (DEBUG) {
-      console.log("SNCF API request URL:", url)
-    }
-
+    console.log("SNCF API request URL:", url)
 
     const response = await fetch(url, {
       headers: {
@@ -88,14 +82,14 @@ export async function GET() {
         const ptSection = journey.sections.find((s) => s.type === "public_transport")
         if (!ptSection || !ptSection.display_informations) return null
 
-        if (DEBUG) {
-          console.log("Journey", index, {
-            departure: ptSection.departure_date_time,
-            arrival: ptSection.arrival_date_time,
-            direction: ptSection.display_informations.direction,
-            code: ptSection.display_informations.code,
-          })
-        }
+
+        console.log("Journey", index, {
+          departure: ptSection.departure_date_time,
+          arrival: ptSection.arrival_date_time,
+          direction: ptSection.display_informations.direction,
+          code: ptSection.display_informations.code,
+        })
+
 
         const { time, delay } = parseDateTime(ptSection.departure_date_time)
 
@@ -109,9 +103,8 @@ export async function GET() {
       })
       .filter(Boolean)
 
-    if (DEBUG) {
-      console.log("SNCF departures:", departures)
-    }
+    console.log("SNCF departures:", departures)
+
 
     return NextResponse.json({ departures })
   } catch (error) {
