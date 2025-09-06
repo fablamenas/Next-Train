@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server"
 
 const SNCF_API_BASE = "https://api.sncf.com/v1"
-const FROM_STOP_AREA = "stop_area:SNCF:87393306" // Issy-Val-de-Seine (RER C)
-const TO_STOP_AREA = "stop_area:SNCF:87393157" // Versailles Château Rive Gauche
 
 interface SNCFJourneysResponse {
   journeys: Array<{
@@ -56,8 +54,14 @@ function parseDateTime(dateTimeStr: string): { iso: string; time: string } {
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const from = searchParams.get("from") || FROM_STOP_AREA
-  const to = searchParams.get("to") || TO_STOP_AREA
+  const from = searchParams.get("from")
+  const to = searchParams.get("to")
+  if (!from || !to) {
+    return NextResponse.json(
+      { error: "Missing from/to parameters" },
+      { status: 400 }
+    )
+  }
   let url = ""
   try {
     const apiKey = process.env.SNCF_API_KEY

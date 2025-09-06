@@ -17,7 +17,10 @@ export async function GET(request: Request) {
   }
 
   const authHeader = "Basic " + Buffer.from(`${apiKey}:`).toString("base64")
-  const url = `${SNCF_API_BASE}/coverage/sncf/stop_areas?q=${encodeURIComponent(query)}&count=10`
+  const url =
+    `${SNCF_API_BASE}/coverage/sncf/places?q=${encodeURIComponent(
+      query
+    )}&type[]=stop_area&count=8`
 
   try {
     const response = await fetch(url, {
@@ -35,7 +38,12 @@ export async function GET(request: Request) {
     }
 
     const data = await response.json()
-    const stations = (data.stop_areas || []).map((s: any) => ({ id: s.id, name: s.name }))
+    const stations = (data.places || [])
+      .filter((p: any) => p.stop_area)
+      .map((p: any) => ({
+        id: p.stop_area.id,
+        name: p.stop_area.name,
+      }))
     return NextResponse.json({ stations })
   } catch (error) {
     console.error("Error fetching SNCF stations:", error)
