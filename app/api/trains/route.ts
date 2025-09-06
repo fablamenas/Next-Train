@@ -34,34 +34,23 @@ function parseDateTime(dateTimeStr: string): { iso: string; time: string } {
     return { iso: "", time: "" }
   }
   const [, y, m, d, h, min, s] = match
-  const date = new Date(Date.UTC(+y, +m - 1, +d, +h, +min, +s))
+  const isoWithoutOffset = `${y}-${m}-${d}T${h}:${min}:${s}`
 
-  const formatter = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Europe/Paris",
-    hour12: false,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  })
-  const parts = Object.fromEntries(
-    formatter.formatToParts(date).map((p) => [p.type, p.value])
-  )
-  const isoWithoutOffset = `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}`
+  // Determine the proper offset for Europe/Paris at the given date
   const tzPart = new Intl.DateTimeFormat("en-US", {
     timeZone: "Europe/Paris",
     timeZoneName: "shortOffset",
   })
-    .formatToParts(date)
+    .formatToParts(new Date(`${isoWithoutOffset}Z`))
     .find((p) => p.type === "timeZoneName")?.value || "GMT+0"
   const offsetMatch = tzPart.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/)
   const sign = offsetMatch ? offsetMatch[1] : "+"
   const hh = offsetMatch ? offsetMatch[2].padStart(2, "0") : "00"
   const mm = offsetMatch && offsetMatch[3] ? offsetMatch[3].padStart(2, "0") : "00"
-  const iso = `${isoWithoutOffset}${sign}${hh}:${mm}`
-  const time = `${parts.hour}:${parts.minute}`
+  const offset = `${sign}${hh}:${mm}`
+
+  const iso = `${isoWithoutOffset}${offset}`
+  const time = `${h}:${min}`
   return { iso, time }
 }
 
