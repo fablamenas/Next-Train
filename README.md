@@ -15,5 +15,5 @@ in production.
 
 ## Environment variables
 
-- `NAVITIA_API_KEY` : SNCF/Navitia API key.
+- `SNCF_API_KEY` : SNCF API key.
 
