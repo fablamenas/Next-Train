@@ -1,7 +1,7 @@
 {
   "name": "RER C - Horaires",
   "short_name": "RER C",
-  "description": "Horaires RER C en temps réel",
+  "description": "Horaires RER C",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
