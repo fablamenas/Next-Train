@@ -14,6 +14,7 @@ interface TrainJourney {
   arrival: string
   arrival_time: string
   duration_s: number
+  delay_min: number
 }
 
 export default function RERSchedule() {
@@ -94,7 +95,10 @@ export default function RERSchedule() {
                     <div className="text-sm text-gray-500 font-mono">→ {journey.arrival_time}</div>
                   </div>
                   <div className="text-base text-gray-700 font-mono font-medium">
-                    [{journey.mission}] {journey.trip}
+                    [{journey.mission}]
+                    {journey.delay_min > 0 && (
+                      <span className="text-red-600"> (+{journey.delay_min}min)</span>
+                    )}
                   </div>
                 </div>
               </CardContent>
