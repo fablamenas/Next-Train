@@ -71,7 +71,7 @@ export async function GET() {
 
     const authHeader = "Basic " + Buffer.from(`${apiKey}:`).toString("base64")
 
-    url = `${SNCF_API_BASE}/coverage/sncf/journeys?from=${FROM_STOP_AREA}&to=${TO_STOP_AREA}&count=6&datetime_represents=departure&max_nb_transfers=0&allowed_id[]=line:SNCF:C&disable_geojson=true`
+    url = `${SNCF_API_BASE}/coverage/sncf/journeys?from=${FROM_STOP_AREA}&to=${TO_STOP_AREA}&count=6&datetime_represents=departure&&allowed_id[]=line:SNCF:C&disable_geojson=true`
 
     console.log("SNCF API request URL:", url)
 
