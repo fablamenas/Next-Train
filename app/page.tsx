@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, ChangeEvent } from "react"
 import { RefreshCw, Train } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,17 +17,41 @@ interface TrainJourney {
   delay_min: number
 }
 
+interface Station {
+  id: string
+  name: string
+}
+
+const DEFAULT_FROM: Station = {
+  id: "stop_area:SNCF:87393306",
+  name: "Issy-Val-de-Seine",
+}
+
+const DEFAULT_TO: Station = {
+  id: "stop_area:SNCF:87393157",
+  name: "Versailles Château Rive Gauche",
+}
+
 export default function RERSchedule() {
   const [journeys, setJourneys] = useState<TrainJourney[]>([])
   const [loading, setLoading] = useState(false)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [from, setFrom] = useState<Station>(DEFAULT_FROM)
+  const [to, setTo] = useState<Station>(DEFAULT_TO)
+  const [fromQuery, setFromQuery] = useState("")
+  const [toQuery, setToQuery] = useState("")
+  const [fromSuggestions, setFromSuggestions] = useState<Station[]>([])
+  const [toSuggestions, setToSuggestions] = useState<Station[]>([])
+  const [initialized, setInitialized] = useState(false)
 
   const fetchDepartures = async () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch("/api/trains")
+      const response = await fetch(
+        `/api/trains?from=${encodeURIComponent(from.id)}&to=${encodeURIComponent(to.id)}`
+      )
       if (response.ok) {
         const data = await response.json()
         setJourneys(data.journeys)
@@ -45,9 +69,74 @@ export default function RERSchedule() {
     setLoading(false)
   }
 
+  const searchStations = async (q: string) => {
+    const res = await fetch(`/api/stations?q=${encodeURIComponent(q)}`)
+    if (res.ok) {
+      const data = await res.json()
+      return data.stations as Station[]
+    }
+    return []
+  }
+
+  const handleFromChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setFromQuery(value)
+    if (value.length >= 2) {
+      setFromSuggestions(await searchStations(value))
+    } else {
+      setFromSuggestions([])
+    }
+  }
+
+  const handleToChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setToQuery(value)
+    if (value.length >= 2) {
+      setToSuggestions(await searchStations(value))
+    } else {
+      setToSuggestions([])
+    }
+  }
+
+  const selectFrom = (station: Station) => {
+    setFrom(station)
+    setFromQuery(station.name)
+    setFromSuggestions([])
+    localStorage.setItem("fromStation", JSON.stringify(station))
+  }
+
+  const selectTo = (station: Station) => {
+    setTo(station)
+    setToQuery(station.name)
+    setToSuggestions([])
+    localStorage.setItem("toStation", JSON.stringify(station))
+  }
+
   useEffect(() => {
-    fetchDepartures()
+    const storedFrom = localStorage.getItem("fromStation")
+    const storedTo = localStorage.getItem("toStation")
+    if (storedFrom) {
+      const st = JSON.parse(storedFrom)
+      setFrom(st)
+      setFromQuery(st.name)
+    } else {
+      setFromQuery(DEFAULT_FROM.name)
+    }
+    if (storedTo) {
+      const st = JSON.parse(storedTo)
+      setTo(st)
+      setToQuery(st.name)
+    } else {
+      setToQuery(DEFAULT_TO.name)
+    }
+    setInitialized(true)
   }, [])
+
+  useEffect(() => {
+    if (initialized) {
+      fetchDepartures()
+    }
+  }, [from, to, initialized])
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -59,9 +148,57 @@ export default function RERSchedule() {
               <Train className="h-6 w-6" />
               RER C
             </CardTitle>
-            <p className="text-purple-100 text-sm">Issy-Val-de-Seine → Versailles Château Rive Gauche</p>
+            <p className="text-purple-100 text-sm">{from.name} → {to.name}</p>
           </CardHeader>
         </Card>
+
+        {/* Station selectors */}
+        <div className="space-y-2">
+          <div className="relative">
+            <input
+              value={fromQuery}
+              onChange={handleFromChange}
+              placeholder="Station de départ"
+              className="w-full rounded border border-gray-300 px-3 py-2"
+              autoComplete="off"
+            />
+            {fromSuggestions.length > 0 && (
+              <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded shadow max-h-60 overflow-y-auto">
+                {fromSuggestions.map((s) => (
+                  <li
+                    key={s.id}
+                    onMouseDown={() => selectFrom(s)}
+                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                  >
+                    {s.name}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="relative">
+            <input
+              value={toQuery}
+              onChange={handleToChange}
+              placeholder="Station d'arrivée"
+              className="w-full rounded border border-gray-300 px-3 py-2"
+              autoComplete="off"
+            />
+            {toSuggestions.length > 0 && (
+              <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded shadow max-h-60 overflow-y-auto">
+                {toSuggestions.map((s) => (
+                  <li
+                    key={s.id}
+                    onMouseDown={() => selectTo(s)}
+                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                  >
+                    {s.name}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
 
         {/* Refresh Button */}
         <Button

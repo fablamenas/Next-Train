@@ -54,7 +54,10 @@ function parseDateTime(dateTimeStr: string): { iso: string; time: string } {
   return { iso, time }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const from = searchParams.get("from") || FROM_STOP_AREA
+  const to = searchParams.get("to") || TO_STOP_AREA
   let url = ""
   try {
     const apiKey = process.env.SNCF_API_KEY
@@ -66,7 +69,7 @@ export async function GET() {
 
     const authHeader = "Basic " + Buffer.from(`${apiKey}:`).toString("base64")
 
-    url = `${SNCF_API_BASE}/coverage/sncf/journeys?from=${FROM_STOP_AREA}&to=${TO_STOP_AREA}&count=6&datetime_represents=departure&allowed_id[]=line:SNCF:C&disable_geojson=true&data_freshness=realtime`
+    url = `${SNCF_API_BASE}/coverage/sncf/journeys?from=${from}&to=${to}&count=6&datetime_represents=departure&allowed_id[]=line:SNCF:C&disable_geojson=true&data_freshness=realtime`
 
     console.log("SNCF API request URL:", url)
 
