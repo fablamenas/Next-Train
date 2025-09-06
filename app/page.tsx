@@ -3,19 +3,21 @@
 import { useState, useEffect } from "react"
 import { RefreshCw, Train } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-interface TrainDeparture {
-  time: string
-  destination: string
+interface TrainJourney {
   mission: string
-  delay: number
-  status: "on-time" | "delayed" | "cancelled"
+  line: string
+  trip: string
+  departure: string
+  departure_time: string
+  arrival: string
+  arrival_time: string
+  duration_s: number
 }
 
 export default function RERSchedule() {
-  const [departures, setDepartures] = useState<TrainDeparture[]>([])
+  const [journeys, setJourneys] = useState<TrainJourney[]>([])
   const [loading, setLoading] = useState(false)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -27,17 +29,17 @@ export default function RERSchedule() {
       const response = await fetch("/api/trains")
       if (response.ok) {
         const data = await response.json()
-        setDepartures(data.departures)
+        setJourneys(data.journeys)
         setLastUpdate(new Date())
       } else {
         const data = await response.json().catch(() => null)
         setError(data?.error || "Erreur lors de la récupération des horaires")
-        setDepartures([])
+        setJourneys([])
       }
     } catch (error) {
       console.error("Error fetching departures:", error)
       setError("Erreur lors de la récupération des horaires")
-      setDepartures([])
+      setJourneys([])
     }
     setLoading(false)
   }
@@ -45,24 +47,6 @@ export default function RERSchedule() {
   useEffect(() => {
     fetchDepartures()
   }, [])
-
-  const getStatusBadge = (departure: TrainDeparture) => {
-    if (departure.status === "cancelled") {
-      return <Badge variant="destructive">Supprimé</Badge>
-    }
-    if (departure.delay > 0) {
-      return (
-        <Badge variant="secondary" className="bg-red-100 text-red-700">
-          +{departure.delay} min
-        </Badge>
-      )
-    }
-    return (
-      <Badge variant="secondary" className="bg-green-100 text-green-700">
-        À l'heure
-      </Badge>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -74,7 +58,7 @@ export default function RERSchedule() {
               <Train className="h-6 w-6" />
               RER C
             </CardTitle>
-            <p className="text-purple-100 text-sm">Issy - Val de Seine → Versailles Rive Gauche</p>
+            <p className="text-purple-100 text-sm">Issy-Val-de-Seine → Versailles Château Rive Gauche</p>
           </CardHeader>
         </Card>
 
@@ -101,15 +85,17 @@ export default function RERSchedule() {
 
         {/* Departures List */}
         <div className="space-y-3">
-          {departures.map((departure, index) => (
+          {journeys.map((journey, index) => (
             <Card key={index} className="bg-white shadow-sm border border-gray-200">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="text-xl font-bold text-gray-900 font-mono">{departure.time}</div>
-                    <div className="text-base text-gray-700 font-mono font-medium">[{departure.mission}]</div>
+                  <div>
+                    <div className="text-xl font-bold text-gray-900 font-mono">{journey.departure_time}</div>
+                    <div className="text-sm text-gray-500 font-mono">→ {journey.arrival_time}</div>
                   </div>
-                  <div>{getStatusBadge(departure)}</div>
+                  <div className="text-base text-gray-700 font-mono font-medium">
+                    [{journey.mission}] {journey.trip}
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -1,62 +1,77 @@
 import { NextResponse } from "next/server"
 
 const SNCF_API_BASE = "https://api.sncf.com/v1"
-const FROM_STOP_AREA = "stop_area:SNCF:87271007" // Issy - Val de Seine
-const TO_STOP_AREA = "stop_area:SNCF:87393157" // Versailles Rive Gauche
+const FROM_STOP_AREA = "stop_area:SNCF:87393306" // Issy-Val-de-Seine (RER C)
+const TO_STOP_AREA = "stop_area:SNCF:87393157" // Versailles Château Rive Gauche
 
 interface SNCFJourneysResponse {
   journeys: Array<{
+    departure_date_time: string
+    arrival_date_time: string
+    duration: number
     sections: Array<{
       type: string
-      departure_date_time: string
-      arrival_date_time: string
       display_informations?: {
         headsign: string
-        network: string
-        direction: string
-        commercial_mode: string
-        physical_mode: string
         label: string
-        color: string
-        code: string
+        trip_short_name: string
       }
     }>
   }>
 }
 
-function parseDateTime(dateTimeStr: string): { time: string; delay: number } {
+function parseDateTime(dateTimeStr: string): { iso: string; time: string } {
   const match = dateTimeStr.match(
     /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/
   )
   if (!match) {
-    return { time: "", delay: 0 }
+    return { iso: "", time: "" }
   }
   const [, y, m, d, h, min, s] = match
-  const date = new Date(`${y}-${m}-${d}T${h}:${min}:${s}`)
-  const time = date.toLocaleTimeString("fr-FR", {
+  const date = new Date(Date.UTC(+y, +m - 1, +d, +h, +min, +s))
+
+  const formatter = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Paris",
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+    second: "2-digit",
   })
-
-  // Delay information not provided by the API in this endpoint
-  const delay = 0
-
-  return { time, delay }
+  const parts = Object.fromEntries(
+    formatter.formatToParts(date).map((p) => [p.type, p.value])
+  )
+  const isoWithoutOffset = `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}`
+  const tzPart = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Paris",
+    timeZoneName: "shortOffset",
+  })
+    .formatToParts(date)
+    .find((p) => p.type === "timeZoneName")?.value || "GMT+0"
+  const offsetMatch = tzPart.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/)
+  const sign = offsetMatch ? offsetMatch[1] : "+"
+  const hh = offsetMatch ? offsetMatch[2].padStart(2, "0") : "00"
+  const mm = offsetMatch && offsetMatch[3] ? offsetMatch[3].padStart(2, "0") : "00"
+  const iso = `${isoWithoutOffset}${sign}${hh}:${mm}`
+  const time = `${parts.hour}:${parts.minute}`
+  return { iso, time }
 }
 
 export async function GET() {
   let url = ""
   try {
-    const apiKey = process.env.SNCF_API_KEY || process.env.API_SNCF_KEY
+    const apiKey = process.env.SNCF_API_KEY
 
     if (!apiKey) {
-      console.error("SNCF API key not found")
+      console.error("Navitia API key not found")
       return NextResponse.json({ error: "API key not configured" }, { status: 500 })
     }
 
     const authHeader = "Basic " + Buffer.from(`${apiKey}:`).toString("base64")
 
-    url = `${SNCF_API_BASE}/coverage/sncf/journeys?from=${FROM_STOP_AREA}&to=${TO_STOP_AREA}&count=6&datetime_represents=departure`
+    url = `${SNCF_API_BASE}/coverage/sncf/journeys?from=${FROM_STOP_AREA}&to=${TO_STOP_AREA}&count=6&datetime_represents=departure&max_nb_transfers=0&allowed_id[]=line:SNCF:C&disable_geojson=true`
 
     console.log("SNCF API request URL:", url)
 
@@ -78,36 +93,28 @@ export async function GET() {
 
     const data: SNCFJourneysResponse = await response.json()
 
-    const departures = data.journeys
-      .map((journey, index) => {
+    const journeys = data.journeys
+      .map((journey) => {
         const ptSection = journey.sections.find((s) => s.type === "public_transport")
         if (!ptSection || !ptSection.display_informations) return null
 
-
-        console.log("Journey", index, {
-          departure: ptSection.departure_date_time,
-          arrival: ptSection.arrival_date_time,
-          direction: ptSection.display_informations.direction,
-          code: ptSection.display_informations.code,
-        })
-
-
-        const { time, delay } = parseDateTime(ptSection.departure_date_time)
+        const dep = parseDateTime(journey.departure_date_time)
+        const arr = parseDateTime(journey.arrival_date_time)
 
         return {
-          time,
-          destination: ptSection.display_informations.direction || "Destination inconnue",
-          mission: ptSection.display_informations.code || `M${index + 1}`,
-          delay,
-          status: delay > 0 ? ("delayed" as const) : ("on-time" as const),
+          mission: ptSection.display_informations.headsign,
+          line: ptSection.display_informations.label,
+          trip: ptSection.display_informations.trip_short_name,
+          departure: dep.iso,
+          departure_time: dep.time,
+          arrival: arr.iso,
+          arrival_time: arr.time,
+          duration_s: journey.duration,
         }
       })
       .filter(Boolean)
 
-    console.log("SNCF departures:", departures)
-
-
-    return NextResponse.json({ departures })
+    return NextResponse.json({ journeys })
   } catch (error) {
     console.error("Error fetching SNCF data:", error)
     const errorMessage =
