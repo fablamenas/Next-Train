@@ -62,7 +62,7 @@ function parseDateTime(dateTimeStr: string): { iso: string; time: string } {
 export async function GET() {
   let url = ""
   try {
-    const apiKey = process.env.NAVITIA_API_KEY
+    const apiKey = process.env.SNCF_API_KEY
 
     if (!apiKey) {
       console.error("Navitia API key not found")
