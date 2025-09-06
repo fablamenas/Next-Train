@@ -18,6 +18,7 @@ interface SNCFJourneysResponse {
         color: string
         code: string
         name: string
+        trip_short_name?: string
       }
       from: {
         name: string
@@ -30,16 +31,34 @@ interface SNCFJourneysResponse {
       departure_date_time: string
       arrival_date_time: string
       data_freshness: string
+      stop_date_times?: Array<{
+        departure_date_time: string
+        arrival_date_time: string
+        base_departure_date_time?: string
+        base_arrival_date_time?: string
+      }>
     }>
   }>
 }
 
-function generateMissionCode(destination: string, index: number): string {
-  const missions = ["VICK", "VERO", "VALI", "VIAN", "VICT", "VEGA"]
-  return missions[index % missions.length]
+function extractMissionCode(section: any): string {
+  // Try to get real mission code from various possible fields
+  if (section.display_informations?.trip_short_name) {
+    return section.display_informations.trip_short_name
+  }
+  if (section.display_informations?.label && section.display_informations.label !== section.display_informations.name) {
+    return section.display_informations.label
+  }
+  if (section.display_informations?.headsign) {
+    // Extract mission code from headsign if it contains one
+    const match = section.display_informations.headsign.match(/([A-Z]{4})/)
+    if (match) return match[1]
+  }
+  // Fallback to a generic code if no mission code found
+  return "RER"
 }
 
-function parseDateTime(dateTimeStr: string): { time: string; delay: number } {
+function parseDateTime(dateTimeStr: string, baseDateTime?: string): { time: string; delay: number } {
   // Format: YYYYMMDDTHHMMSS
   if (dateTimeStr.length === 15 && dateTimeStr.includes("T")) {
     const year = dateTimeStr.substring(0, 4)
@@ -51,15 +70,28 @@ function parseDateTime(dateTimeStr: string): { time: string; delay: number } {
 
     // Create proper ISO date string
     const isoString = `${year}-${month}-${day}T${hour}:${minute}:${second}`
-    const date = new Date(isoString)
+    const actualDate = new Date(isoString)
 
-    const time = date.toLocaleTimeString("fr-FR", {
+    const time = actualDate.toLocaleTimeString("fr-FR", {
       hour: "2-digit",
       minute: "2-digit",
     })
 
-    // Calculate delay (simplified - in real implementation, compare with scheduled time)
-    const delay = Math.random() > 0.7 ? Math.floor(Math.random() * 8) : 0
+    let delay = 0
+    if (baseDateTime && baseDateTime.length === 15 && baseDateTime.includes("T")) {
+      const baseYear = baseDateTime.substring(0, 4)
+      const baseMonth = baseDateTime.substring(4, 6)
+      const baseDay = baseDateTime.substring(6, 8)
+      const baseHour = baseDateTime.substring(9, 11)
+      const baseMinute = baseDateTime.substring(11, 13)
+      const baseSecond = baseDateTime.substring(13, 15)
+
+      const baseIsoString = `${baseYear}-${baseMonth}-${baseDay}T${baseHour}:${baseMinute}:${baseSecond}`
+      const scheduledDate = new Date(baseIsoString)
+
+      // Calculate delay in minutes
+      delay = Math.max(0, Math.floor((actualDate.getTime() - scheduledDate.getTime()) / (1000 * 60)))
+    }
 
     return { time, delay }
   }
@@ -71,8 +103,7 @@ function parseDateTime(dateTimeStr: string): { time: string; delay: number } {
     minute: "2-digit",
   })
 
-  const delay = Math.random() > 0.7 ? Math.floor(Math.random() * 8) : 0
-  return { time, delay }
+  return { time, delay: 0 }
 }
 
 export async function GET(request: Request) {
@@ -121,9 +152,12 @@ export async function GET(request: Request) {
           section.display_informations?.code === "C" || section.display_informations?.name?.includes("RER C"),
       )
 
-      const { time, delay } = parseDateTime(journey.departure_date_time)
+      const baseDateTime = rerSection?.stop_date_times?.[0]?.base_departure_date_time
+      const { time, delay } = parseDateTime(journey.departure_date_time, baseDateTime)
+
       const destination = rerSection?.display_informations?.direction || rerSection?.to?.name || "Versailles Château"
-      const mission = generateMissionCode(destination, index)
+
+      const mission = rerSection ? extractMissionCode(rerSection) : "RER"
 
       return {
         time,
