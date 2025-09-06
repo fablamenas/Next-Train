@@ -16,6 +16,12 @@ interface SNCFJourneysResponse {
         label: string
         trip_short_name: string
       }
+      stop_date_times?: Array<{
+        departure_date_time: string
+        arrival_date_time: string
+        base_departure_date_time?: string
+        base_arrival_date_time?: string
+      }>
     }>
   }>
 }
@@ -71,7 +77,7 @@ export async function GET() {
 
     const authHeader = "Basic " + Buffer.from(`${apiKey}:`).toString("base64")
 
-    url = `${SNCF_API_BASE}/coverage/sncf/journeys?from=${FROM_STOP_AREA}&to=${TO_STOP_AREA}&count=6&datetime_represents=departure&&allowed_id[]=line:SNCF:C&disable_geojson=true`
+    url = `${SNCF_API_BASE}/coverage/sncf/journeys?from=${FROM_STOP_AREA}&to=${TO_STOP_AREA}&count=6&datetime_represents=departure&allowed_id[]=line:SNCF:C&disable_geojson=true&data_freshness=realtime`
 
     console.log("SNCF API request URL:", url)
 
@@ -96,10 +102,29 @@ export async function GET() {
     const journeys = data.journeys
       .map((journey) => {
         const ptSection = journey.sections.find((s) => s.type === "public_transport")
-        if (!ptSection || !ptSection.display_informations) return null
+        if (!ptSection || !ptSection.display_informations || !ptSection.stop_date_times)
+          return null
 
-        const dep = parseDateTime(journey.departure_date_time)
-        const arr = parseDateTime(journey.arrival_date_time)
+        const stops = ptSection.stop_date_times
+        if (stops.length === 0) return null
+        const firstStop = stops[0]
+        const lastStop = stops[stops.length - 1]
+
+        const dep = parseDateTime(firstStop.departure_date_time)
+        const arr = parseDateTime(lastStop.arrival_date_time)
+        const baseDep = firstStop.base_departure_date_time
+          ? parseDateTime(firstStop.base_departure_date_time)
+          : dep
+        const baseArr = lastStop.base_arrival_date_time
+          ? parseDateTime(lastStop.base_arrival_date_time)
+          : arr
+
+        const delayMin = Math.round(
+          (new Date(dep.iso).getTime() - new Date(baseDep.iso).getTime()) / 60000
+        )
+        const arrivalDelayMin = Math.round(
+          (new Date(arr.iso).getTime() - new Date(baseArr.iso).getTime()) / 60000
+        )
 
         return {
           mission: ptSection.display_informations.headsign,
@@ -110,6 +135,8 @@ export async function GET() {
           arrival: arr.iso,
           arrival_time: arr.time,
           duration_s: journey.duration,
+          delay_min: delayMin,
+          arrival_delay_min: arrivalDelayMin,
         }
       })
       .filter(Boolean)
