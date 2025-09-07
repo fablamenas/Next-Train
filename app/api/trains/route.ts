@@ -157,12 +157,13 @@ export async function GET(request: Request) {
 
       const destination = rerSection?.display_informations?.direction || rerSection?.to?.name || "Versailles Château"
 
-      const mission = rerSection ? extractMissionCode(rerSection) : "RER"
+      const headsign =
+        rerSection?.display_informations?.headsign || rerSection?.display_informations?.direction || "RER C"
 
       return {
         time,
         destination,
-        mission,
+        headsign, // Return headsign instead of mission
         delay,
         status: delay > 0 ? ("delayed" as const) : ("on-time" as const),
       }
@@ -173,10 +174,34 @@ export async function GET(request: Request) {
     console.error("Error fetching SNCF data:", error)
 
     const fallbackDepartures = [
-      { time: "14:15", destination: "Versailles Rive Gauche", mission: "VICK", delay: 0, status: "on-time" as const },
-      { time: "14:33", destination: "Versailles Rive Gauche", mission: "VERO", delay: 4, status: "delayed" as const },
-      { time: "14:51", destination: "Versailles Rive Gauche", mission: "VALI", delay: 0, status: "on-time" as const },
-      { time: "15:05", destination: "Versailles Rive Gauche", mission: "VICK", delay: 0, status: "on-time" as const },
+      {
+        time: "14:15",
+        destination: "Versailles Rive Gauche",
+        headsign: "Versailles Château",
+        delay: 0,
+        status: "on-time" as const,
+      },
+      {
+        time: "14:33",
+        destination: "Versailles Rive Gauche",
+        headsign: "Versailles Château",
+        delay: 4,
+        status: "delayed" as const,
+      },
+      {
+        time: "14:51",
+        destination: "Versailles Rive Gauche",
+        headsign: "Versailles Château",
+        delay: 0,
+        status: "on-time" as const,
+      },
+      {
+        time: "15:05",
+        destination: "Versailles Rive Gauche",
+        headsign: "Versailles Château",
+        delay: 0,
+        status: "on-time" as const,
+      },
     ]
 
     return NextResponse.json({ departures: fallbackDepartures })
