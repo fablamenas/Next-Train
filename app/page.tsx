@@ -73,6 +73,7 @@ export default function RERSchedule() {
   const [arrivalStation, setArrivalStation] = useState("stop_area:SNCF:87393157")
   const [settingsOpen, setSettingsOpen] = useState(false)
   const currentLine = transportLines[selectedLine]
+  const LineIcon = currentLine.icon
 
   const fetchDepartures = async () => {
     setLoading(true)
@@ -195,9 +196,6 @@ export default function RERSchedule() {
       </Badge>
     )
   }
-
-  const currentLine = transportLines[selectedLine]
-  const LineIcon = currentLine.icon
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
