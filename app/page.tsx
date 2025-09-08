@@ -23,6 +23,7 @@ const transportLines = {
     icon: Train,
     color: "#FFCD00",
     textColor: "#000000", // Added dark text color for better contrast on yellow background
+    coverage: "sncf",
     stations: [
       { id: "stop_area:SNCF:87393306", name: "Issy - Val de Seine" },
       { id: "stop_area:SNCF:87393314", name: "Meudon - Val Fleury" },
@@ -41,6 +42,7 @@ const transportLines = {
     icon: Train,
     color: "#E2231A",
     textColor: "#ffffff", // White text works well on red background
+    coverage: "sncf",
     stations: [
       { id: "stop_area:SNCF:87001479", name: "Châtelet - Les Halles" },
       { id: "stop_area:SNCF:87001511", name: "Gare de Lyon" },
@@ -53,6 +55,7 @@ const transportLines = {
     icon: Bus,
     color: "#82C341",
     textColor: "#ffffff", // White text works well on green background
+    coverage: "ratp",
     stations: [
       { id: "stop_area:RATP:59", name: "Châtelet" },
       { id: "stop_area:RATP:1671", name: "Gare du Nord" },
@@ -69,11 +72,14 @@ export default function RERSchedule() {
   const [departureStation, setDepartureStation] = useState("stop_area:SNCF:87393306")
   const [arrivalStation, setArrivalStation] = useState("stop_area:SNCF:87393157")
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const currentLine = transportLines[selectedLine]
+  const LineIcon = currentLine.icon
 
   const fetchDepartures = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`/api/trains?from=${departureStation}&to=${arrivalStation}`)
+      const coverageParam = currentLine.coverage ? `&coverage=${currentLine.coverage}` : ""
+      const response = await fetch(`/api/trains?from=${departureStation}&to=${arrivalStation}&line=${selectedLine}${coverageParam}`)
       if (response.ok) {
         const data = await response.json()
         setDepartures(data.departures)
@@ -152,7 +158,7 @@ export default function RERSchedule() {
 
   useEffect(() => {
     fetchDepartures()
-  }, [departureStation, arrivalStation])
+  }, [departureStation, arrivalStation, selectedLine])
 
   const handleLineChange = (newLine: keyof typeof transportLines) => {
     setSelectedLine(newLine)
@@ -190,9 +196,6 @@ export default function RERSchedule() {
       </Badge>
     )
   }
-
-  const currentLine = transportLines[selectedLine]
-  const LineIcon = currentLine.icon
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
