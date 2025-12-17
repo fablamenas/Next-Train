@@ -134,7 +134,6 @@ export async function GET(request: Request) {
     })
 
     console.log("[v0] Response status:", response.status)
-    console.log("[v0] Response headers:", Object.fromEntries(response.headers.entries()))
 
     if (!response.ok) {
       const errorText = await response.text()
@@ -144,7 +143,7 @@ export async function GET(request: Request) {
     }
 
     const data: SNCFJourneysResponse = await response.json()
-    console.log("[v0] API response data:", JSON.stringify(data, null, 2))
+    console.log("[v0] Total journeys:", data.journeys.length)
 
     const departures = data.journeys.slice(0, 6).map((journey, index) => {
       const rerSection = journey.sections.find(
@@ -152,8 +151,20 @@ export async function GET(request: Request) {
           section.display_informations?.code === "C" || section.display_informations?.name?.includes("RER C"),
       )
 
-      const baseDateTime = rerSection?.stop_date_times?.[0]?.base_departure_date_time
-      const { time, delay } = parseDateTime(journey.departure_date_time, baseDateTime)
+      let departureTimeStr = journey.departure_date_time
+      let baseDateTime = undefined
+
+      if (rerSection?.stop_date_times && rerSection.stop_date_times.length > 0) {
+        departureTimeStr = rerSection.stop_date_times[0].departure_date_time
+        baseDateTime = rerSection.stop_date_times[0].base_departure_date_time
+        console.log(`[v0] Journey ${index}: Using stop_date_times[0] departure: ${departureTimeStr}`)
+      } else {
+        console.log(
+          `[v0] Journey ${index}: No stop_date_times found, using journey.departure_date_time: ${departureTimeStr}`,
+        )
+      }
+
+      const { time, delay } = parseDateTime(departureTimeStr, baseDateTime)
 
       const destination = rerSection?.display_informations?.direction || rerSection?.to?.name || "Versailles Château"
 
@@ -163,12 +174,13 @@ export async function GET(request: Request) {
       return {
         time,
         destination,
-        headsign, // Return headsign instead of mission
+        headsign,
         delay,
         status: delay > 0 ? ("delayed" as const) : ("on-time" as const),
       }
     })
 
+    console.log("[v0] Processed departures:", departures)
     return NextResponse.json({ departures })
   } catch (error) {
     console.error("Error fetching SNCF data:", error)
