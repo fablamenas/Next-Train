@@ -73,7 +73,7 @@ export default function RERSchedule() {
   const fetchDepartures = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`/api/trains?from=${departureStation}&to=${arrivalStation}`)
+      const response = await fetch(`/api/trains?from=${departureStation}&to=${arrivalStation}&line=${selectedLine}`)
       if (response.ok) {
         const data = await response.json()
         setDepartures(data.departures)
@@ -152,7 +152,7 @@ export default function RERSchedule() {
 
   useEffect(() => {
     fetchDepartures()
-  }, [departureStation, arrivalStation])
+  }, [departureStation, arrivalStation, selectedLine])
 
   const handleLineChange = (newLine: keyof typeof transportLines) => {
     setSelectedLine(newLine)

@@ -111,6 +111,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const fromStation = searchParams.get("from") || "stop_area:SNCF:87393306" // Default: Issy - Val de Seine
     const toStation = searchParams.get("to") || "stop_area:SNCF:87393157" // Default: Versailles Château
+    const line = searchParams.get("line") || "RER_C" // Add line parameter support for dynamic line filtering
 
     const apiKey = process.env.SNCF_API_KEY || process.env.API_SNCF_KEY
 
@@ -120,7 +121,17 @@ export async function GET(request: Request) {
     }
 
     const authString = Buffer.from(`${apiKey}:`).toString("base64")
-    const url = `${SNCF_API_BASE}/coverage/${COVERAGE}/journeys?from=${fromStation}&to=${toStation}&count=6&datetime_represents=departure&allowed_id[]=line:SNCF:C&disable_geojson=true&data_freshness=realtime`
+
+    let lineFilter = ""
+    if (line === "RER_C") {
+      lineFilter = "&allowed_id[]=line:SNCF:C"
+    } else if (line === "RER_A") {
+      lineFilter = "&allowed_id[]=line:SNCF:A"
+    } else if (line === "BUS") {
+      lineFilter = "" // No specific line filter for buses to get all bus routes
+    }
+
+    const url = `${SNCF_API_BASE}/coverage/${COVERAGE}/journeys?from=${fromStation}&to=${toStation}&count=12&datetime_represents=departure${lineFilter}&disable_geojson=true&data_freshness=realtime`
 
     console.log("[v0] Making request to:", url)
     console.log("[v0] Using API key (first 10 chars):", apiKey.substring(0, 10))
@@ -145,7 +156,7 @@ export async function GET(request: Request) {
     const data: SNCFJourneysResponse = await response.json()
     console.log("[v0] Total journeys:", data.journeys.length)
 
-    const departures = data.journeys.slice(0, 6).map((journey, index) => {
+    const departures = data.journeys.slice(0, 12).map((journey, index) => {
       const rerSection = journey.sections.find(
         (section) =>
           section.display_informations?.code === "C" || section.display_informations?.name?.includes("RER C"),
