@@ -123,12 +123,16 @@ export async function GET(request: Request) {
     const authString = Buffer.from(`${apiKey}:`).toString("base64")
 
     let lineFilter = ""
+    let lineCode = "" // Add variable to track which line code to search for
     if (line === "RER_C") {
       lineFilter = "&allowed_id[]=line:SNCF:C"
+      lineCode = "C"
     } else if (line === "RER_A") {
       lineFilter = "&allowed_id[]=line:SNCF:A"
+      lineCode = "A"
     } else if (line === "BUS") {
       lineFilter = "" // No specific line filter for buses to get all bus routes
+      lineCode = "Bus"
     }
 
     const url = `${SNCF_API_BASE}/coverage/${COVERAGE}/journeys?from=${fromStation}&to=${toStation}&count=12&datetime_represents=departure${lineFilter}&disable_geojson=true&data_freshness=realtime`
@@ -157,17 +161,17 @@ export async function GET(request: Request) {
     console.log("[v0] Total journeys:", data.journeys.length)
 
     const departures = data.journeys.slice(0, 12).map((journey, index) => {
-      const rerSection = journey.sections.find(
+      const transportSection = journey.sections.find(
         (section) =>
-          section.display_informations?.code === "C" || section.display_informations?.name?.includes("RER C"),
+          section.display_informations?.code === lineCode || section.display_informations?.name?.includes(lineCode),
       )
 
       let departureTimeStr = journey.departure_date_time
       let baseDateTime = undefined
 
-      if (rerSection?.stop_date_times && rerSection.stop_date_times.length > 0) {
-        departureTimeStr = rerSection.stop_date_times[0].departure_date_time
-        baseDateTime = rerSection.stop_date_times[0].base_departure_date_time
+      if (transportSection?.stop_date_times && transportSection.stop_date_times.length > 0) {
+        departureTimeStr = transportSection.stop_date_times[0].departure_date_time
+        baseDateTime = transportSection.stop_date_times[0].base_departure_date_time
         console.log(`[v0] Journey ${index}: Using stop_date_times[0] departure: ${departureTimeStr}`)
       } else {
         console.log(
@@ -177,10 +181,11 @@ export async function GET(request: Request) {
 
       const { time, delay } = parseDateTime(departureTimeStr, baseDateTime)
 
-      const destination = rerSection?.display_informations?.direction || rerSection?.to?.name || "Versailles Château"
+      const destination =
+        transportSection?.display_informations?.direction || transportSection?.to?.name || "Destination"
 
       const headsign =
-        rerSection?.display_informations?.headsign || rerSection?.display_informations?.direction || "RER C"
+        transportSection?.display_informations?.headsign || transportSection?.display_informations?.direction || line
 
       return {
         time,
